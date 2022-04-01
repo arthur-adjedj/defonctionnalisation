@@ -56,7 +56,9 @@ let rec free_vars (bound_vars : (ident * typ) list) (e : Typedtree.texpr)  : (st
   | TE_let (false, pat, e1, e2) -> union (free_vars bound_vars e1) (free_vars (pat ++ bound_vars) e2)
   | TE_fun (pat,e) -> free_vars (pat ++ bound_vars) e
   | TE_ident x -> if List.mem (x,type_translate e.texpr_typ) bound_vars then [] else [(x,type_translate e.texpr_typ)]
-  | TE_match (*(e1, e2, (pat1, pat2, e3))*) _ -> (*TODO*) []
+  | TE_match (em, e1, (pat1, pat2, e2)) -> union2 [free_vars bound_vars em;
+                                                   free_vars bound_vars e1;
+                                                   free_vars (pat1 ++ (pat2 ++ bound_vars)) e2] 
 
 let rec texpr_translate (_ds : Typedtree.texpr) : Tannot.texpr = 
   let expr_desc = match _ds.texpr_desc with
