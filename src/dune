@@ -1,0 +1,9 @@
+(executable
+ (name main)
+ (modules main)
+ (libraries lang pprint))
+
+(executable
+ (name runtests)
+ (modules runtests)
+ (libraries lang pprint unix))

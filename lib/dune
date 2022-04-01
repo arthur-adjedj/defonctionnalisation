@@ -1,0 +1,12 @@
+(library
+ (name lang)
+ (modules_without_implementation asttypes parsetree typedtree target tannot)
+ (flags :standard -w -9)
+ (libraries pprint)
+)
+
+(ocamllex
+ (modules lexer))
+
+(ocamlyacc
+ (modules parser))
