@@ -1,4 +1,5 @@
 let empty = function x -> false
+
 let insert x s = (function y -> (x = y) || (s y))
 
 let _ =

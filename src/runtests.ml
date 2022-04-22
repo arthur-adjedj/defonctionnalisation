@@ -47,6 +47,7 @@ let report_loc (b,e) fmt =
 let (let*) = Result.bind
 
 type test_output = {
+  original : PPrint.document;
   output : string; err : string;
   reference_output : string; reference_err : string;
 }
@@ -102,6 +103,7 @@ let runtest file : (string, test_error) result =
      err = reference_err
   then Ok output
   else Error (TestOutput {
+    original = Targetpp.doc_file tgtast;
     reference_output; reference_err;
     output; err
   })
@@ -129,10 +131,12 @@ let main () =
       Format.printf "Error when processing the input program:@,";
       Format.printf "@[<v>%t@]@," pp;
       Format.printf "@]@."
-    | Error (TestOutput { output; err;
+    | Error (TestOutput { original; output; err;
                           reference_output; reference_err }) ->
       Printf.printf "%s\n%!" (red "[ERROR]");
       Printf.printf "Mismatch between source and output program.\n";
+      Printf.printf "Output program.\n";
+      PPrint.ToChannel.compact stdout original;
       Printf.printf "- Running 'ocaml' on source program produces:\n";
       Printf.printf "%s\n%s\n" reference_err reference_output;
       Printf.printf "- Running 'ocaml' on output program produces:\n";
