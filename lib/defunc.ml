@@ -6,13 +6,15 @@ open Target
 let arg = TE_ident ID_arg
 let apply = TE_ident ID_apply
 
+
 let func_env  : (cident * tgt_func_constr_ty) list ref = 
   ref []
 
-let apply_env = ref []
+let apply_env : (cident * cident list * tgt_expr) list ref = ref []
 
 let legit_funcs = ["print_string";"print_int";"print_newline"]
 
+(* a function is called legit if it shouldn't be defunctionalised*)
 let is_legit = function
   | TE_ident (ID_string id) -> List.mem id legit_funcs
   | _ -> false
@@ -50,8 +52,10 @@ let rec isin x = function
   | [] -> false
   | (y,_)::t -> x=y || isin x t
 
+(*adds a func to the type and the apply environment*)
 let rec func_add e = match e.texpr_desc with
   | TE_fun (pat,e1,funid, fclos) when not @@ isin ("F"^string_of_int funid) !func_env -> 
+
     func_env :=
       ("F"^string_of_int funid,
         {constr_ty_params = List.map (fun x -> type_translate (snd x)) fclos;
@@ -59,7 +63,7 @@ let rec func_add e = match e.texpr_desc with
          constr_ty_ret = type_translate e1.texpr_typ})
       ::!func_env;
 
-    let wut = texpr_translate e1 in (*tout bug si je ne le compute pas en dehors du TE_let ???????*)
+    let wut = texpr_translate e1 in (*tout bug si je ne le compute pas en dehors du :=  :( *)
     apply_env :=
       ("F"^string_of_int funid,List.map fst fclos,
        TE_let(false,tpatt_translate pat,arg,wut))
@@ -68,33 +72,50 @@ let rec func_add e = match e.texpr_desc with
   | _ -> ()
 
 and texpr_translate (_ds : Tannot.texpr) : Target.tgt_expr = match _ds.texpr_desc with
-| TE_cte c -> TE_cte c
-| TE_unop (op,e) -> TE_unop (op,texpr_translate e)
-| TE_binop (op,e1,e2) -> TE_binop (op,texpr_translate e1,texpr_translate e2)
-| TE_if (eb,e1,e2) -> TE_if (texpr_translate eb, texpr_translate e1, texpr_translate e2)
-| TE_nil  -> TE_nil
-| TE_cons (e1,e2) -> TE_cons (texpr_translate e1, texpr_translate e2)
-| TE_app (e1,e2) -> 
-  let e1' = texpr_translate e1 in
-  if is_legit e1' then 
-    TE_app (texpr_translate e1 , texpr_translate e2)
-  else 
-  TE_app ((TE_app (apply,texpr_translate e1)) , texpr_translate e2)
-| TE_tuple ls -> TE_tuple (List.map texpr_translate ls)
-| TE_let (is_rec, pat, e1, e2) -> TE_let ( is_rec, tpatt_translate pat,texpr_translate e1,texpr_translate e2)
-(*I have no idea what I'm doing*)
-| TE_fun ((*pat*)_,_(*e*),funid, fclos) -> 
-  (*print_typ _ds.texpr_typ; print_newline ();*)
-  func_add _ds;
-  (*let _ = texpr_translate e in*)
-  TE_func_constr ("F"^string_of_int funid, List.map fst fclos)
-| TE_ident x -> TE_ident (ID_string x)
-| TE_match (e1, e2, (pat1, pat2, e3)) -> TE_match (texpr_translate e1, texpr_translate e2,
-                                                  (tpatt_translate pat1, tpatt_translate pat2, texpr_translate e3))
+  | TE_cte c -> 
+      TE_cte c
+
+  | TE_unop (op,e) -> 
+      TE_unop (op,texpr_translate e)
+
+  | TE_binop (op,e1,e2) -> 
+      TE_binop (op,texpr_translate e1,texpr_translate e2)
+
+  | TE_if (eb,e1,e2) -> 
+      TE_if (texpr_translate eb, texpr_translate e1, texpr_translate e2)
+
+  | TE_nil  -> 
+      TE_nil
+
+  | TE_cons (e1,e2) -> 
+      TE_cons (texpr_translate e1, texpr_translate e2)
+
+  | TE_app (e1,e2) -> 
+      let e1' = texpr_translate e1 in
+      if is_legit e1' then 
+        TE_app (texpr_translate e1 , texpr_translate e2)
+      else 
+        TE_app ((TE_app (apply,texpr_translate e1)) , texpr_translate e2)
+
+  | TE_tuple ls -> 
+      TE_tuple (List.map texpr_translate ls)
+
+  | TE_let (is_rec, pat, e1, e2) -> 
+      TE_let ( is_rec, tpatt_translate pat,texpr_translate e1,texpr_translate e2)
+
+  | TE_fun (_,_,funid, fclos) -> 
+      func_add _ds;
+      TE_func_constr ("F"^string_of_int funid, List.map fst fclos)
+
+  | TE_ident x -> 
+      TE_ident (ID_string x)
+
+  | TE_match (e1, e2, (pat1, pat2, e3)) -> 
+      TE_match (texpr_translate e1, texpr_translate e2,
+                (tpatt_translate pat1, tpatt_translate pat2, texpr_translate e3))
 
 
                                                   
-(*add stuff to an env here, no idea what yet*)
 let tdef_translate ( (is_rec, pat, e) : Tannot.t_def) : tgt_def =
   (is_rec, tpatt_translate pat, texpr_translate e)   
 

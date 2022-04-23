@@ -5,6 +5,7 @@ open Asttypes
 
 let apply_env = ref []
 
+(*some functions shouldn't be defunctionalised and thus shouldn't be counted as free vars or when creating the func type*)
 let legit_funcs = ["print_string";"print_int";"print_newline"]
 
 let is_legit x : bool = List.mem x legit_funcs
@@ -50,7 +51,7 @@ let rec bound_vars_tpatt (pat : Typedtree.tpatt) : (ident * typ) list = match pa
   | TP_ident x -> [x,type_translate pat.tpatt_typ]
   | TP_tuple ls -> List.fold_left (fun ls x -> (bound_vars_tpatt x) @ ls) [] ls
 
-
+(*checks if a var is already part of the bound vars*)
 let rec isin x = function
   | [] -> false
   | (h,_)::t -> x = h || isin x t
@@ -91,7 +92,7 @@ let print_tup pp1 pp2 x =
 
 let print_free_vars l = print_list (print_tup print_string print_typ) l
 
-  
+(*finds free vars recursively*)
 let rec free_vars (bound_vars : (ident * typ) list) (e : Typedtree.texpr)  : (string * typ) list = match e.texpr_desc with
   | TE_cte _ -> []
   | TE_unop (_,e) -> free_vars bound_vars e
@@ -109,6 +110,8 @@ let rec free_vars (bound_vars : (ident * typ) list) (e : Typedtree.texpr)  : (st
                                                    free_vars bound_vars e1;
                                                    free_vars (pat1 ++ (pat2 ++ bound_vars)) e2] 
 
+
+(*Typedtree.texpr to Tannot.texpr*)                                                   
 let rec texpr_translate (_ds : Typedtree.texpr) : Tannot.texpr = 
   let expr_desc = match _ds.texpr_desc with
   | TE_cte c -> TE_cte c
@@ -137,5 +140,5 @@ let tdef_translate ( (is_rec, pat, e) : Typedtree.t_def) : t_def =
 let file (_ds: Typedtree.t_def list): t_def list =
   let res =
     List.map tdef_translate _ds in
-  (*reset_id (); (*so that each test always starts with F0*)*)
+  reset_id (); (*so that each test always starts with F0*)
   res
